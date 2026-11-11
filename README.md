@@ -7,6 +7,7 @@ scripts, source data and `output/`, so projects never share files.
 |---|---|
 | [bella-vista-trail-map/](bella-vista-trail-map/) | Layered, laser-cut map of every Bella Vista, AR mountain-bike trail, built from OpenStreetMap and elevation data |
 | [ride-bella-vista-poster/](ride-bella-vista-poster/) | "RIDE BELLA VISTA / BE HAPPY." engraving: five bikes over a topo map, traced from a raster image |
+| [christmas-tree-ornament/](christmas-tree-ornament/) | Five-layer bauble ornament: a decorated pine in the snow under a starry sky, with a message on the back |
 
 Run scripts from anywhere. They find their own `data/` and `output/` folders.
 
