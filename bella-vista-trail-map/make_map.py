@@ -22,6 +22,7 @@ Laser color convention (LightBurn/xTool import by color):
   green   #00A000 = light SCORE (contours, streams)
   orange  #FF8000 = trail lines (--lines mode only)
   magenta #FF00FF = registration board outline (cut LAST to make an alignment jig, or disable)
+  gray    #B4B4B4 = glue guides: light engrave just inside where the next layer's pieces go
 """
 import argparse, json, math, io
 from pathlib import Path
@@ -252,6 +253,7 @@ class SVG:
             encoding="utf-8")
 
 CUT, SCORE, LIGHT, REG, TRAIL, ENGRAVE = "#FF0000", "#0000FF", "#00A000", "#FF00FF", "#FF8000", "#000000"
+GUIDE = "#B4B4B4"   # glue guides (light engrave), LightBurn layer 08
 
 # ----------------------------------------------------------------- text
 def text_geom(s, height_mm, weight="bold", family="DejaVu Serif"):
@@ -731,6 +733,27 @@ def main():
         old.unlink()
     frame = board.difference(vis)
 
+    # ---- build-up (see .claude/skills/layer-buildup): the scene layers and the frame stack on the base
+    # (base -> far -> lake -> mid -> near -> frame). Each layer also carries the footprint of everything
+    # above it, so the tall pines, the bike and the frame sit on solid wood all the way down instead of
+    # over air. Trails and lettering sit straight on the full base, so they need no build-up.
+    from layer_stack import build_up, glue_guides, unsupported
+    own = [[far], [lake_piece], [mid], [near], [frame]]
+    for k, a in unsupported([unary_union(o) for o in [[board]] + own]):
+        print(f"  build-up: {['base', 'far', 'lake', 'mid', 'near', 'frame'][k]} overhung the layer "
+              f"below by {a/100:.0f} cm^2 -> now supported")
+    cuts = build_up(own)
+    assert not list(unsupported([[board]] + cuts))
+    far_c, lake_c_, mid_c, near_c, frame_c = (unary_union(c) for c in cuts)
+    base_cut = board.difference(lakes_m)
+    # glue guides: on each layer, mark where the next layer's pieces go. The board edge and the
+    # frame's inner edge register by themselves, so they get no guide.
+    keep_out = unary_union([board.boundary.buffer(0.9), vis.boundary.buffer(0.9)])
+    g_stack = glue_guides([[base_cut]] + cuts, keep_out=[keep_out])
+    g_letters = glue_guides([[base_cut], [lettering]])[0]
+    base_guide = unary_union([g for g in (g_stack[0], g_letters) if g is not None])
+    guides = dict(base=base_guide, far=g_stack[1], lake=g_stack[2], mid=g_stack[3], near=g_stack[4])
+
     def write(name, *items):
         sv = SVG(W, H)
         for g, col, kw in items:
@@ -743,16 +766,20 @@ def main():
                   (engrave, ENGRAVE, dict(fill=ENGRAVE, width=0))]
     if not raised:
         base_items.append((trail_line, TRAIL, dict(closed=False, width=0.4)))
-    base_items += [(lakes_m, CUT, {}), (board, CUT, {})]
+    base_items += [(base_guide, GUIDE, dict(fill=GUIDE, width=0)), (lakes_m, CUT, {}), (board, CUT, {})]
     write("1_base.svg", *base_items)
     if raised:
         write("2_trails.svg", (strip, CUT, {}), (board, REG, {}))
     write("3_lettering.svg", (lettering, CUT, {}), (board, REG, {}))
-    write("4_scene_far.svg", (far, CUT, {}), (board, REG, {}))
-    write("5_scene_lake.svg", (lake_piece, CUT, {}), (board, REG, {}))
-    write("6_scene_mid.svg", (mid, CUT, {}), (board, REG, {}))
-    write("7_scene_near.svg", (near, CUT, {}), (board, REG, {}))
+    # scene layers now include the frame spacer ring, so their outer edge is a real cut (no magenta needed)
+    write("4_scene_far.svg", (guides["far"], GUIDE, dict(fill=GUIDE, width=0)), (far_c, CUT, {}))
+    write("5_scene_lake.svg", (guides["lake"], GUIDE, dict(fill=GUIDE, width=0)), (lake_c_, CUT, {}))
+    write("6_scene_mid.svg", (guides["mid"], GUIDE, dict(fill=GUIDE, width=0)), (mid_c, CUT, {}))
+    write("7_scene_near.svg", (guides["near"], GUIDE, dict(fill=GUIDE, width=0)), (near_c, CUT, {}))
     write("8_frame.svg", (frame, CUT, {}))
+    layers_preview(W, H, [("1 base", base_cut, base_guide), ("4 far", far_c, guides["far"]),
+                          ("5 lake", lake_c_, guides["lake"]), ("6 mid", mid_c, guides["mid"]),
+                          ("7 near", near_c, guides["near"]), ("8 frame", frame_c, None)])
 
     # ---- optional stacked topo layers
     if args.stacked:
@@ -764,10 +791,13 @@ def main():
         (OUT / "topo").mkdir(exist_ok=True)
         for old in (OUT / "topo").glob("*.svg"):
             old.unlink()
-        for i, Lv in enumerate(lv, 1):
-            reg = clean_polys(clip(M(contour_polys(d, px2ll, Lv))), 20)
-            regs.append(reg)
-            write(f"topo/topo_{i:02d}_{Lv*3.281:.0f}ft.svg", (reg, CUT, {}))
+        for Lv in lv:
+            regs.append(clean_polys(clip(M(contour_polys(d, px2ll, Lv))), 20))
+        tcuts = build_up([[r] for r in regs])                 # higher levels always sit on lower ones
+        regs = [unary_union(c) for c in tcuts]
+        tguides = glue_guides(tcuts, keep_out=[board.boundary.buffer(0.9)])
+        for i, (Lv, reg, gd) in enumerate(zip(lv, regs, tguides), 1):
+            write(f"topo/topo_{i:02d}_{Lv*3.281:.0f}ft.svg", (gd, GUIDE, dict(fill=GUIDE, width=0)), (reg, CUT, {}))
         topo_preview(W, H, regs, strip if raised else trail_line.buffer(0.5))
         print(f"  wrote {args.stacked} stacked topo layers")
 
@@ -831,6 +861,20 @@ def preview(W, H, L):
     raised(L["near"], PAL["near"])
     raised(L["frame"], PAL["frame"])
     fig.savefig(OUT / "preview.png"); plt.close(fig)
+
+def layers_preview(W, H, layers):
+    """Cut sheet check: each stacked layer's cut outline with its glue guides in gray."""
+    import matplotlib; matplotlib.use("Agg")
+    import matplotlib.pyplot as plt
+    fig, axes = plt.subplots(2, 3, figsize=(15, 10 * H / W + 0.6), dpi=80)
+    for ax, (name, cut, guide) in zip(axes.flat, layers):
+        ax.set_xlim(0, W); ax.set_ylim(H, 0); ax.set_aspect("equal"); ax.axis("off")
+        _patch(ax, cut, fc="#efe7d2", ec="#d00000", lw=0.5)
+        if guide is not None:
+            _patch(ax, guide, fc="#555555", lw=0)
+        ax.set_title(name)
+    fig.tight_layout()
+    fig.savefig(OUT / "layers_preview.png", facecolor="white"); plt.close(fig)
 
 def topo_preview(W, H, regs, strip):
     import matplotlib; matplotlib.use("Agg")

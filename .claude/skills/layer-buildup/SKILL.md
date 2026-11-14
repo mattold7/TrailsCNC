@@ -54,8 +54,11 @@ never mixed into the front engrave of that piece:
 
 ## Notes per project
 - **christmas-tree-ornament**: already does this (`build()` in `make_ornament.py`). The rim is the shared edge left out of the guides.
-- **bella-vista-trail-map**: scene layers `4_scene_far` … `7_scene_near` and `3_lettering` sit on `1_base`.
-  Check each with `unsupported()`. The base is full-board, so most of it is supported already. The gaps are likely to be
-  the scene layers stacked on each other. Put the glue guides on `1_base` (or on the scene layer below), and keep the magenta
-  registration outline out of the guides. Raised trail strips (`2_trails`) already use the leftover-sheet jig, so a guide there is optional.
+- **bella-vista-trail-map**: done in `main()` of `make_map.py`. The layers aren't one straight stack, so define the stack explicitly:
+  base → far → lake → mid → near → frame is the stack that gets build-up. Trails and lettering sit straight on the full base,
+  so they only get guides on the base (the lettering does; the trails use the leftover-sheet jig instead).
+  The frame needed a spacer ring in every scene layer, so it doesn't rock on the scene. The board edge and the frame's inner edge are
+  left out of the guides. The stacked topo layers get build-up plus a guide between each pair of levels.
+- **Lesson:** a frame or border on top of a scene that runs under it always needs the spacer ring. Check `unsupported()` with the
+  frame included.
 - Flat engravings (e.g. ride-bella-vista-poster) have no stack, so this skill doesn't apply.

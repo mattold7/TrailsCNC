@@ -33,13 +33,13 @@ Always check `output/preview.png` before cutting.
 | File | Suggested material / finish | Operation |
 |---|---|---|
 | `0_backer.svg` | 1/8" ply painted lake blue | cut outline |
-| `1_base.svg` | 1/8" birch ply, cream paint or natural | engrave lettering (black), score roads (blue), light score contours/streams (green), cut lakes + outline (red) |
+| `1_base.svg` | 1/8" birch ply, cream paint or natural | engrave lettering (black), score roads (blue), light score contours/streams (green), glue guides (gray), cut lakes + outline (red) |
 | `2_trails.svg` | 1/16" (1.5 mm) ply, dark green stain/paint | cut |
 | `3_lettering.svg` | 1/8" ply, dark green (title, panel names, mileage, north arrow) | cut |
-| `4_scene_far.svg` | 1/8" ply, pale blue-gray | cut |
-| `5_scene_lake.svg` | 1/8" ply, blue | cut |
-| `6_scene_mid.svg` | 1/8" ply, sage green | cut |
-| `7_scene_near.svg` | 1/8" ply, dark green (hills, big pines, rock, bike) | cut |
+| `4_scene_far.svg` | 1/8" ply, pale blue-gray | glue guides (gray), cut |
+| `5_scene_lake.svg` | 1/8" ply, blue | glue guides (gray), cut |
+| `6_scene_mid.svg` | 1/8" ply, sage green | glue guides (gray), cut |
+| `7_scene_near.svg` | 1/8" ply, dark green (hills, big pines, rock, bike) | glue guides (gray), cut |
 | `8_frame.svg` | 1/4" ply, dark green or walnut | cut |
 | `topo/topo_NN_*.svg` (optional) | 1/8" ply, one sheet per level | cut; alternative 3D build – see below |
 
@@ -49,7 +49,23 @@ Tip: paint/stain full sheets *before* cutting – the cut edges stay clean and y
 (lowest number first) to get real terrain relief, then paint or stain each level.
 
 Laser color convention: **red = cut**, **black fill = engrave**, **blue = score**, **green = light score**,
-**orange = trail lines** (`--lines` only), **magenta = registration outline** (layers 2–7).
+**gray fill = glue guides** (light engrave, LightBurn 08), **orange = trail lines** (`--lines` only),
+**magenta = registration outline** (layers 2–3).
+
+**Build-up** (`.claude/skills/layer-buildup/`): the scene and the frame stack on the base in this order: base → far → lake →
+mid → near → frame. Each of those layers also includes the shape of everything above it. That way the tall mid
+and near pines, the bike and the frame all sit on solid wood instead of over gaps. The script prints what it had to
+fill in. The scene layers include a spacer ring under the frame, so the frame sits flat all the way round. Because
+that ring's outer edge is the board edge, those layers no longer need the magenta outline. The extra pieces are
+hidden behind the layers in front, and only their side edges show. Paint the edges of the pines, the bike and the
+frame stack after gluing, or paint those sheets to match. Trails and lettering sit straight on the full base, so
+they need no build-up.
+
+**Glue guides:** each layer has a thin gray engraved band just inside where the next layer's pieces go, so it's hidden once glued.
+The base marks the far ridge and every letter of the lettering layer. Each scene layer marks the one above it. The
+stacked topo layers mark the next level up. Guides are left out wherever the edge already lines up with a cut edge,
+the board edge or the frame's inner edge. Engrave them fast and at low power.
+Check `output/layers_preview.png` (each stacked layer's cut in red, guides in gray) before cutting.
 SVGs are in millimetres – in LightBurn import and confirm the size reads 609.6 × 609.6 mm.
 
 ## Assembly tips
